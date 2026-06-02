@@ -249,7 +249,7 @@ class PyramidTemplateMatcher(object):
             pyramid.append(cv2.pyrDown(pyramid[-1]))
         return list(reversed(pyramid))
     def _is_solid_color(self, image):
-        return image.ptp() == 0
+        return (image.max() - image.min()) == 0  # ndarray.ptp() removed in NumPy 1.24
     
     def _is_solid_black(self, image):
         return image.mean() == 0
