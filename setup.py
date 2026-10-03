@@ -17,7 +17,7 @@ class BinaryDistribution(Distribution):
     def is_pure(self):
         return False
 
-install_requires = ['requests', 'pillow', 'numpy', 'opencv-python', 'keyboard', 'mouse', 'pyperclip', 'pytesseract']
+install_requires = ['requests', 'pillow', 'numpy', 'opencv-python', 'keyboard', 'mouse', 'pyperclip', 'pytesseract', 'mss>=10.1']
 if platform.system() == "Darwin":
     install_requires += ['pyobjc']
 

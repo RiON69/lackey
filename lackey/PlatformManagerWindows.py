@@ -14,6 +14,7 @@ from ctypes import wintypes
 from PIL import Image, ImageTk, ImageOps
 
 from .SettingsDebug import Debug
+from .engine.dpi import ensure_per_monitor_v2
 
 # Python 3 compatibility
 try:
@@ -41,7 +42,9 @@ class PlatformManagerWindows(object):
         self._psapi = psapi
 
         # Pay attention to different screen DPI settings
-        self._user32.SetProcessDPIAware()
+        # Request per-monitor DPI awareness v2, but only if nobody has chosen a mode
+        # yet: an embedding application may already have set it (and must win).
+        ensure_per_monitor_v2()
 
         # Mapping to `keyboard` names
         self._SPECIAL_KEYCODES = {
