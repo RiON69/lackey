@@ -85,3 +85,31 @@ def test_rect_geometry() -> None:
 def test_launch_rejects_non_executables(name: str) -> None:
     with pytest.raises(LaunchError):
         _checked(Path(name))
+
+
+def test_accent_color_reads_as_rgb_hex() -> None:
+    from lackey.engine.system import accent_hex
+
+    assert accent_hex(0xFFD47800) == "#0078d4"  # DWM stores 0xAABBGGRR
+    assert accent_hex(0x00000000) == "#000000"
+
+
+def test_environment_defaults_when_settings_are_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    from lackey.engine import system
+
+    monkeypatch.setattr(system, "_reg_dword", lambda _path, _name: None)
+    monkeypatch.setattr(system, "high_contrast", lambda: False)
+
+    def no_hdr() -> bool:
+        raise OSError(87, "QueryDisplayConfig failed")
+
+    monkeypatch.setattr(system, "hdr_enabled", no_hdr)
+    env = system.environment()
+    assert (env.apps_theme, env.system_theme, env.text_scale) == ("light", "light", 100)
+    assert env.accent is None and env.transparency is True and env.hdr is None
+    values = {("Personalize", "AppsUseLightTheme"): 0, ("Accessibility", "TextScaleFactor"): 125}
+    monkeypatch.setattr(
+        system, "_reg_dword", lambda path, name: values.get((path.rsplit("\\", 1)[-1], name))
+    )
+    env = system.environment()
+    assert env.apps_theme == "dark" and env.text_scale == 125

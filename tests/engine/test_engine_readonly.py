@@ -66,3 +66,14 @@ def test_windows_listing() -> None:
     assert all(w.hwnd and w.title for w in windows)
     assert any(w.process for w in windows)
     assert current_integrity() >= 0x2000
+
+
+def test_environment_reads_the_display_settings() -> None:
+    env = system.environment()
+    assert env.apps_theme in ("light", "dark") and env.system_theme in ("light", "dark")
+    assert 100 <= env.text_scale <= 225
+    assert env.accent is None or (env.accent.startswith("#") and len(env.accent) == 7)
+    assert env.hdr in (True, False, None)
+    assert set(env.as_dict()) == {
+        "apps_theme", "system_theme", "high_contrast", "text_scale", "accent", "transparency", "hdr"
+    }

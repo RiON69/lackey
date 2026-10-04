@@ -2,6 +2,7 @@
 
 Unreleased (fork RiON69/lackey)
 * `lackey.engine.match`: `Matcher` interface and `TemplateMatcher` - gray `TM_CCOEFF_NORMED` with a half-scale pass whose candidates are scored exactly at full scale; all matches without duplicates; the score gap to the next distinct candidate; NaN/inf scores of flat screen areas never win; flat needles are refused; a mean-color check catches look-alikes in another color. The Sikuli-era `TemplateMatchers` stay for `RegionMatching` until the facade is reworked.
+* `lackey.engine.system.environment()`: theme of apps and system, high contrast, text scale, accent color, transparency and HDR (advanced color) - the settings that change pixels at the same DPI, recorded with image patterns.
 * `lackey.engine`: typed Windows engine (DPI v2, mss capture, `SendInput` input with tags, windows, launch, system state) without side effects on import.
 
 v0.4.0a1
