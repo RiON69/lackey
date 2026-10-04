@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Lackey"
+dynamic = ["version"]
+description = "Desktop automation for Python: a typed Windows engine and a Sikuli-style API"
+readme = "README.md"
+license = { file = "LICENSE.md" }
+requires-python = ">=3.12"
+authors = [{ name = "Jon Winsley", email = "jon.winsley@gmail.com" }]
+keywords = ["automation", "testing", "sikuli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Desktop Environment",
+]
+# The engine (lackey.engine): capture, input, windows, template matching.
+dependencies = [
+    "mss>=10.1",
+    "numpy>=2",
+    "opencv-python-headless>=4.10",
+]
+
+[project.optional-dependencies]
+# The classic Sikuli-style API (lackey.sikuli, re-exported by `import lackey`).
+sikuli = [
+    "keyboard",
+    "mouse",
+    "pillow",
+    "pyperclip",
+    "pytesseract",
+    "requests",
+]
+
+[project.urls]
+Homepage = "https://github.com/RiON69/lackey"
+
+[tool.setuptools.dynamic]
+version = { attr = "lackey._version.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["lackey*"]

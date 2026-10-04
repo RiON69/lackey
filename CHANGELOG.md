@@ -1,6 +1,7 @@
 ## Changelog ##
 
 Unreleased (fork RiON69/lackey)
+* Packaging: `pyproject.toml` (setup.py and requirements.txt removed), Python >= 3.12. The engine needs numpy >= 2, `opencv-python-headless` (instead of `opencv-python`) and mss; the Sikuli API moved to `lackey.sikuli` with its dependencies in the `sikuli` extra (keyboard, mouse, pillow, pyperclip, pytesseract, requests). `import lackey` re-exports it when they are installed; without them it imports nothing more and leaves the DPI mode alone.
 * `lackey.engine.match`: `Matcher` interface and `TemplateMatcher` - gray `TM_CCOEFF_NORMED` with a half-scale pass whose candidates are scored exactly at full scale; all matches without duplicates; the score gap to the next distinct candidate; NaN/inf scores of flat screen areas never win; flat needles are refused; a mean-color check catches look-alikes in another color. The Sikuli-era `TemplateMatchers` stay for `RegionMatching` until the facade is reworked.
 * `lackey.engine.system.environment()`: theme of apps and system, high contrast, text scale, accent color, transparency and HDR (advanced color) - the settings that change pixels at the same DPI, recorded with image patterns.
 * `lackey.engine`: typed Windows engine (DPI v2, mss capture, `SendInput` input with tags, windows, launch, system state) without side effects on import.

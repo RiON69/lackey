@@ -4,6 +4,8 @@ memory, but never send input or change windows."""
 import subprocess
 import sys
 
+import pytest
+
 from lackey.engine import system
 from lackey.engine.desktop import Desktop
 from lackey.engine.monitors import list_monitors, primary_monitor, virtual_screen
@@ -14,10 +16,46 @@ def _run(code: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run([sys.executable, "-W", "ignore", "-c", code], capture_output=True, text=True, timeout=60)
 
 
-def test_import_has_no_output_and_claims_per_monitor_v2() -> None:
+def _sikuli_installed() -> bool:
+    return _run("import keyboard, mouse, pyperclip, pytesseract, requests, PIL").returncode == 0
+
+
+def test_import_has_no_output() -> None:
+    result = _run("import lackey\nimport lackey.engine.match")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ""
+
+
+def test_the_sikuli_api_claims_per_monitor_v2_on_import() -> None:
+    if not _sikuli_installed():
+        pytest.skip("the Sikuli API needs lackey[sikuli]")
     result = _run("import lackey\nfrom lackey.engine.dpi import current_mode\nprint(current_mode().value)")
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "per_monitor_v2"  # nothing else printed on import
+
+
+def test_the_engine_alone_leaves_the_dpi_mode_to_its_caller() -> None:
+    """Without the Sikuli extra, `import lackey` changes nothing (T1.2): the program claims
+    per-monitor v2 itself, or the capture backend does when it starts."""
+    if _sikuli_installed():
+        pytest.skip("with lackey[sikuli] the classic API claims per-monitor v2 on import")
+    code = (
+        "import lackey\n"
+        "from lackey.engine.dpi import current_mode\n"
+        "before = current_mode().value\n"
+        "from lackey.engine.capture import MssCapture\n"
+        "MssCapture()\n"
+        "print(before, current_mode().value)\n"
+        "try:\n"
+        "    lackey.Region\n"
+        "except ImportError as error:\n"
+        "    print('sikuli' in str(error))"
+    )
+    result = _run(code)
+    assert result.returncode == 0, result.stderr
+    first, second = result.stdout.strip().splitlines()
+    assert first.split()[0] != "per_monitor_v2" and first.split()[1] == "per_monitor_v2"
+    assert second == "True"
 
 
 def test_import_does_not_override_an_existing_dpi_mode() -> None:

@@ -6,10 +6,11 @@ Developed by [Jon Winsley](https://github.com/glitchassassin)
 
 ## Third Party Library Requirements ##
 
-* numpy
-* pillow
-* opencv
-* keyboard
+* The engine (`lackey.engine`: DPI, capture, input, windows, template matching) needs
+  numpy 2, OpenCV (`opencv-python-headless`) and mss.
+* The classic Sikuli-style API (`Region`, `Screen`, `click()`...) also needs keyboard,
+  mouse, pillow, pyperclip, pytesseract and requests: `pip install lackey[sikuli]`.
+  Without them `import lackey` loads only what the engine needs.
 
 ## Introduction ##
 
