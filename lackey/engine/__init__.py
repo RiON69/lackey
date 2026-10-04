@@ -6,6 +6,7 @@ internals step by step:
 - ``dpi``: per-monitor DPI awareness (v2) for the whole process;
 - ``geometry`` and ``monitors``: physical-pixel rectangles and displays;
 - ``capture``: screen capture (mss);
+- ``match``: template matching (gray correlation with a half-scale pass, color check);
 - ``input``: mouse and keyboard through ``SendInput`` with pre-checks;
 - ``windows``: top-level windows, activation and integrity levels;
 - ``system``: desktop/session state and user idle time;
