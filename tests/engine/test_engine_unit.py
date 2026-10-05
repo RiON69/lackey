@@ -11,6 +11,7 @@ from lackey.engine.geometry import Rect
 from lackey.engine.input import (
     EXTENDED_VKS,
     INPUT,
+    InputDriver,
     TAG_AGENT,
     TAG_OPERATOR,
     is_own_tag,
@@ -40,6 +41,21 @@ def test_utf16_units_cover_cyrillic_and_surrogate_pairs() -> None:
     assert utf16_units("a") == [0x61]
     assert utf16_units("Я") == [0x042F]
     assert utf16_units("😀") == [0xD83D, 0xDE00]
+
+
+def test_char_delay_sends_one_character_at_a_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    driver = InputDriver(precheck=lambda _kind, _point: None)
+    batches: list[int] = []
+    pauses: list[float] = []
+    monkeypatch.setattr(driver, "_send", lambda events: batches.append(len(events)))
+    monkeypatch.setattr("lackey.engine.input.time.sleep", pauses.append)
+    driver.type_text("Ёж😀", char_delay=0.02)
+    assert batches == [2, 2, 4]  # down+up per UTF-16 unit; the surrogate pair travels whole
+    assert pauses == [0.02] * 3
+    batches.clear()
+    pauses.clear()
+    driver.type_text("Ёж😀")
+    assert batches == [8] and pauses == []
 
 
 def test_parse_keys() -> None:

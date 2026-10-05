@@ -394,16 +394,24 @@ class InputDriver:
             self._send([self._key(vk, up=True)])
             self._held_keys.discard(vk)
 
-    def type_text(self, text: str, *, newline: str = "enter", chunk_delay: float = 0.0) -> None:
+    def type_text(
+        self, text: str, *, newline: str = "enter", chunk_delay: float = 0.0, char_delay: float = 0.0
+    ) -> None:
         """Type Unicode text independent of the keyboard layout.
 
         ``newline``: 'enter' presses Enter, 'shift_enter' presses Shift+Enter
         (a line break in chat inputs that submit on Enter), 'literal' sends the
         character itself. Tabs are sent as the Tab key.
+
+        ``char_delay``: send one character at a time with this pause after it. Apps
+        that take Unicode input through the text services slowly (Windows 11 Notepad)
+        garble faster text: characters repeat, and Enter overtakes them.
         """
         if newline not in ("enter", "shift_enter", "literal"):
             raise ValueError(f"bad newline mode: {newline}")
         text = text.replace("\r\n", "\n").replace("\r", "\n")
+        chunk_size = 1 if char_delay > 0 else self.chunk_size
+        pause = char_delay if char_delay > 0 else chunk_delay
         with self._lock:
             batch: list[INPUT] = []
             units_in_batch = 0
@@ -414,8 +422,8 @@ class InputDriver:
                     self._check("keyboard")
                     self._send(batch)
                     batch, units_in_batch = [], 0
-                    if chunk_delay:
-                        time.sleep(chunk_delay)
+                    if pause:
+                        time.sleep(pause)
 
             for char in text:
                 if char == "\n" and newline != "literal":
@@ -429,7 +437,7 @@ class InputDriver:
                 for unit in utf16_units(char):
                     batch += [self._unicode(unit, up=False), self._unicode(unit, up=True)]
                     units_in_batch += 1
-                if units_in_batch >= self.chunk_size:
+                if units_in_batch >= chunk_size:  # a surrogate pair stays together
                     flush()
             flush()
 
