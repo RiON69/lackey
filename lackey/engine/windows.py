@@ -26,6 +26,11 @@ WM_CLOSE = 0x0010
 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 TOKEN_QUERY = 0x0008
 TOKEN_INTEGRITY_LEVEL = 25
+# Display affinity: WDA_MONITOR windows capture as black, WDA_EXCLUDEFROMCAPTURE ones
+# are left out (what is behind them shows instead).
+WDA_NONE = 0x00
+WDA_MONITOR = 0x01
+WDA_EXCLUDEFROMCAPTURE = 0x11
 
 # Mandatory integrity level RIDs.
 INTEGRITY_LOW = 0x1000
@@ -56,6 +61,7 @@ _user32.WindowFromPoint.restype = wintypes.HWND
 _user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 _user32.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
 _user32.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
+_user32.GetWindowDisplayAffinity.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 _dwmapi.DwmGetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
 _kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
 _kernel32.OpenProcess.restype = wintypes.HANDLE
@@ -110,6 +116,7 @@ class WindowInfo:
     minimized: bool
     cloaked: bool
     foreground: bool
+    capture_protected: bool = False  # shows black or not at all in screen captures
 
 
 def _text(hwnd: int) -> str:
@@ -165,6 +172,19 @@ def is_cloaked(hwnd: int) -> bool:
     return bool(cloaked.value)
 
 
+def display_affinity(hwnd: int) -> int:
+    """WDA_* display affinity of a window of any process (WDA_NONE when unreadable)."""
+    affinity = wintypes.DWORD()
+    if not _user32.GetWindowDisplayAffinity(hwnd, ctypes.byref(affinity)):
+        return WDA_NONE
+    return int(affinity.value)
+
+
+def is_capture_protected(hwnd: int) -> bool:
+    """Password managers, banking and DRM windows opt out of screen capture."""
+    return display_affinity(hwnd) != WDA_NONE
+
+
 def get_window(hwnd: int) -> WindowInfo:
     if not _user32.IsWindow(hwnd):
         raise WindowNotFoundError(f"window {hwnd} does not exist")
@@ -180,6 +200,7 @@ def get_window(hwnd: int) -> WindowInfo:
         minimized=bool(_user32.IsIconic(hwnd)),
         cloaked=is_cloaked(hwnd),
         foreground=_user32.GetForegroundWindow() == hwnd,
+        capture_protected=is_capture_protected(hwnd),
     )
 
 
@@ -204,6 +225,28 @@ def list_windows(*, include_cloaked: bool = False, include_untitled: bool = Fals
         if not info.title and not include_untitled:
             continue
         result.append(info)
+    return result
+
+
+def protected_windows() -> list[WindowInfo]:
+    """Visible, uncloaked, not minimized top-level windows that opt out of screen capture,
+    in z-order. Cheap: the details are read only for those windows."""
+    handles: list[int] = []
+
+    def collect(hwnd, _lparam):
+        if _user32.IsWindowVisible(hwnd) and not _user32.IsIconic(hwnd) and is_capture_protected(hwnd):
+            handles.append(hwnd)
+        return True
+
+    _user32.EnumWindows(_WNDENUMPROC(collect), 0)
+    result: list[WindowInfo] = []
+    for hwnd in handles:
+        try:
+            info = get_window(hwnd)
+        except WindowNotFoundError:
+            continue
+        if not info.cloaked:
+            result.append(info)
     return result
 
 

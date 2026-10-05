@@ -1,15 +1,26 @@
 """Read-only checks on the real machine: they query state and capture the screen into
 memory, but never send input or change windows."""
 
+import ctypes
 import subprocess
 import sys
+from ctypes import wintypes
 
 import pytest
 
 from lackey.engine import system
 from lackey.engine.desktop import Desktop
 from lackey.engine.monitors import list_monitors, primary_monitor, virtual_screen
-from lackey.engine.windows import current_integrity, list_windows
+from lackey.engine.windows import (
+    WDA_EXCLUDEFROMCAPTURE,
+    WDA_MONITOR,
+    WDA_NONE,
+    current_integrity,
+    display_affinity,
+    get_window,
+    list_windows,
+    protected_windows,
+)
 
 
 def _run(code: str) -> subprocess.CompletedProcess[str]:
@@ -104,6 +115,31 @@ def test_windows_listing() -> None:
     assert all(w.hwnd and w.title for w in windows)
     assert any(w.process for w in windows)
     assert current_integrity() >= 0x2000
+
+
+def test_capture_protection_is_read_from_the_display_affinity() -> None:
+    """A hidden window of this process: nothing appears on the screen."""
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    user32.CreateWindowExW.restype = wintypes.HWND
+    user32.CreateWindowExW.argtypes = [
+        wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+        ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+        wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID,
+    ]  # fmt: skip
+    user32.SetWindowDisplayAffinity.argtypes = [wintypes.HWND, wintypes.DWORD]
+    user32.DestroyWindow.argtypes = [wintypes.HWND]
+    hwnd = user32.CreateWindowExW(0, "STATIC", "lackey affinity", 0, 0, 0, 10, 10, None, None, None, None)
+    assert hwnd
+    try:
+        assert display_affinity(hwnd) == WDA_NONE and not get_window(hwnd).capture_protected
+        if not user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE):
+            assert user32.SetWindowDisplayAffinity(hwnd, WDA_MONITOR)  # before Windows 10 2004
+        assert display_affinity(hwnd) in (WDA_MONITOR, WDA_EXCLUDEFROMCAPTURE)
+        assert get_window(hwnd).capture_protected
+        assert hwnd not in [w.hwnd for w in protected_windows()]  # hidden: nothing to hide
+    finally:
+        user32.DestroyWindow(hwnd)
+    assert display_affinity(hwnd) == WDA_NONE  # gone: unreadable
 
 
 def test_environment_reads_the_display_settings() -> None:
