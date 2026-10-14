@@ -1,6 +1,7 @@
 ## Changelog ##
 
 Unreleased (fork RiON69/lackey)
+* `MssCapture`: every grab runs on one capture thread with one mss instance. The instance per calling thread leaked its DCs and DIB (about 16 MB and three GDI objects at 2560x1600) each time a pooled thread ended - a server grew by 900 MB in 30 minutes.
 * `InputDriver.type_text(char_delay=...)`: one character per `SendInput` with a pause - Windows 11 Notepad garbles faster Unicode input (repeated characters, Enter overtaking the text).
 * `lackey.engine.windows`: `display_affinity()`, `is_capture_protected()` and `WindowInfo.capture_protected` - windows that capture as black (`WDA_MONITOR`) or are left out of captures (`WDA_EXCLUDEFROMCAPTURE`); `protected_windows()` lists the visible ones cheaply.
 * Packaging: `pyproject.toml` (setup.py and requirements.txt removed), Python >= 3.12. The engine needs numpy >= 2, `opencv-python-headless` (instead of `opencv-python`) and mss; the Sikuli API moved to `lackey.sikuli` with its dependencies in the `sikuli` extra (keyboard, mouse, pillow, pyperclip, pytesseract, requests). `import lackey` re-exports it when they are installed; without them it imports nothing more and leaves the DPI mode alone.
