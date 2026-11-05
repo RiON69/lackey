@@ -1,6 +1,8 @@
 ## Changelog ##
 
 Unreleased (fork RiON69/lackey)
+* `launch`: a packaged application by its AUMID, started through `shell:AppsFolder`.
+* CI on `windows-latest`: `tests/engine`, tests that drive the real desk skip themselves.
 * `MssCapture`: every grab runs on one capture thread with one mss instance. The instance per calling thread leaked its DCs and DIB (about 16 MB and three GDI objects at 2560x1600) each time a pooled thread ended - a server grew by 900 MB in 30 minutes.
 * `InputDriver.type_text(char_delay=...)`: one character per `SendInput` with a pause - Windows 11 Notepad garbles faster Unicode input (repeated characters, Enter overtaking the text).
 * `lackey.engine.windows`: `display_affinity()`, `is_capture_protected()` and `WindowInfo.capture_protected` - windows that capture as black (`WDA_MONITOR`) or are left out of captures (`WDA_EXCLUDEFROMCAPTURE`); `protected_windows()` lists the visible ones cheaply.

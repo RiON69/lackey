@@ -19,6 +19,7 @@ from lackey.engine.input import (
     parse_keys,
     utf16_units,
 )
+from lackey.engine import launch
 from lackey.engine.launch import LaunchError, _checked
 
 
@@ -129,3 +130,21 @@ def test_environment_defaults_when_settings_are_missing(monkeypatch: pytest.Monk
     )
     env = system.environment()
     assert env.apps_theme == "dark" and env.text_scale == 125
+
+
+AUMID = "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App"
+
+
+def test_a_packaged_application_starts_through_the_shell(monkeypatch: pytest.MonkeyPatch) -> None:
+    started: list[list[str]] = []
+    monkeypatch.setattr(launch.subprocess, "Popen", lambda command, **_: started.append(command))
+    assert launch.resolve(AUMID) == Path(AUMID)
+    launch.start(AUMID)
+    assert started == [["explorer.exe", rf"shell:AppsFolder\{AUMID}"]]
+    with pytest.raises(LaunchError):
+        launch.start(AUMID, ["--flag"])
+
+
+@pytest.mark.parametrize("app", ["notepad", "notepad.exe", "a_b", "x!y", "a_B!c", r"C:\x_y!z"])
+def test_other_names_are_not_taken_for_an_aumid(app: str) -> None:
+    assert not launch.is_aumid(app)

@@ -16,8 +16,16 @@ _APP_PATHS = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths"
 _SCRIPT_SUFFIXES = frozenset({".bat", ".cmd", ".ps1", ".vbs", ".js", ".wsf"})
 
 
+# A packaged application's AUMID: Microsoft.WindowsCalculator_8wekyb3d8bbwe!App
+_AUMID = re.compile(r"^[A-Za-z0-9.\-]+_[a-z0-9]+![A-Za-z0-9.\-_]+$")
+
+
 class LaunchError(RuntimeError):
     code = "LAUNCH_FAILED"
+
+
+def is_aumid(app: str) -> bool:
+    return _AUMID.fullmatch(app) is not None
 
 
 def _checked(path: Path) -> Path:
@@ -30,12 +38,15 @@ def _checked(path: Path) -> Path:
 
 
 def resolve(app: str) -> Path:
-    """Absolute path -> App Paths registry (HKCU, HKLM) -> PATH; .exe only."""
+    """Absolute path -> App Paths registry (HKCU, HKLM) -> AUMID of a packaged application
+    (returned as it is, ``start`` knows it) -> PATH, where execution aliases live; .exe only."""
     candidate = Path(os.path.expandvars(app))
     if candidate.is_absolute():
         if not candidate.is_file():
             raise LaunchError(f"executable not found: {candidate}")
         return _checked(candidate)
+    if is_aumid(app):
+        return Path(app)
     name = app if app.lower().endswith(".exe") else f"{app}.exe"
     for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
         try:
@@ -58,10 +69,16 @@ def snapshot() -> set[int]:
 
 
 def start(app: str, args: list[str] | None = None, *, cwd: str | None = None) -> subprocess.Popen:
-    path = resolve(app)
+    if is_aumid(app):
+        if args:
+            raise LaunchError(f"a packaged application takes no arguments here: {app}")
+        command = ["explorer.exe", rf"shell:AppsFolder\{app}"]
+    else:
+        path = resolve(app)
+        command = [str(path), *(args or [])]
     try:
         return subprocess.Popen(  # noqa: S603 - resolved .exe, argument list, no shell
-            [str(path), *(args or [])],
+            command,
             cwd=cwd,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -69,7 +86,7 @@ def start(app: str, args: list[str] | None = None, *, cwd: str | None = None) ->
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
         )
     except OSError as error:
-        raise LaunchError(f"failed to start {path}: {error}") from error
+        raise LaunchError(f"failed to start {app}: {error}") from error
 
 
 def wait_new_window(
